@@ -104,7 +104,7 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
         let set_length = set_length as usize;
         let set_index = &address_binary[tag_length..set_length];
 
-//         println!("Code: {}", &code);
+        println!("Code: {}", &code);
 //         println!("Address: {:?}", &address);
 //         println!("Address in binary: {:?}", &address_binary);
 //         println!("tag_length: {}", &tag_length);
@@ -119,38 +119,48 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
 
 fn process_line(cache: &mut HashMap<String, String>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, code: &String, tag: &String, set_index: &String) {
     if code == "L" {
-        load(cache, hits, misses, evictions, tag, set_index)
+        load(cache, hits, misses, evictions, tag, set_index);
     }
     if code == "S" {
-        store(cache, hits, misses, evictions, tag, set_index)
+        load(cache, hits, misses, evictions, tag, set_index);
     }
     if code == "M" {
-        modify(cache, hits, misses, evictions, tag, set_index)
+        load(cache, hits, misses, evictions, tag, set_index);
+        load(cache, hits, misses, evictions, tag, set_index);
     }
 }
 
-fn load(cache: &mut HashMap<String, String>, hits: &mut i32, misses: &mut i32, _evictions: &mut i32, tag: &String, set_index: &String) {
-    if !cache.contains_key(&set_index as &str) {
-        *misses += 1;
-    }
+fn load(cache: &mut HashMap<String, String>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, tag: &String, set_index: &String) {
     if cache.contains_key(&set_index as &str) && cache.get(&set_index as &str) == Some(tag) {
         *hits += 1;
+        println!("hit");
     }
     if cache.contains_key(&set_index as &str) && cache.get(&set_index as &str) != Some(tag) {
         *misses += 1;
+        println!("miss");
+        cache.remove(&set_index as &str);
+        println!("eviction");
+        cache.insert(set_index.to_string(), tag.to_string());
+        *evictions += 1;
+    }
+    if !cache.contains_key(&set_index as &str) {
+        *misses += 1;
+        println!("miss");
+        cache.insert(set_index.to_string(), tag.to_string());
     }
 }
 
-fn store(_cache: &mut HashMap<String, String>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
-}
-
-fn modify(_cache: &mut HashMap<String, String>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
-}
+// fn store(_cache: &mut HashMap<String, String>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
+//
+// }
+//
+// fn modify(_cache: &mut HashMap<String, String>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
+// }
 
 fn main() -> Result<(), getopt::Error>{
     env::set_var("RUST_BACKTRACE", "1");
     // Stores the iterator of lines of the file in lines variable.
-    let reader = read_lines("./traces/yi2.trace".to_string());
+    let reader = read_lines("./traces/yi.trace".to_string());
     let (s, b, _e) = get_cli_arguments().unwrap();
 
     // initialise the cache, the hits, misses and evictions variables
