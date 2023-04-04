@@ -117,7 +117,7 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
     return (code.to_string(), tag.to_string(), set_index.to_string())
 }
 
-fn process_line(cache: &mut HashMap<i32, i32>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, code: &String, tag: &String, set_index: &String) {
+fn process_line(cache: &mut HashMap<String, String>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, code: &String, tag: &String, set_index: &String) {
     if code == "L" {
         load(cache, hits, misses, evictions, tag, set_index)
     }
@@ -129,21 +129,22 @@ fn process_line(cache: &mut HashMap<i32, i32>, hits: &mut i32, misses: &mut i32,
     }
 }
 
-fn load(_cache: &mut HashMap<i32, i32>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, _tag: &String, _set_index: &String) {
-    // check if the _set_index is a key in the cache:
-
-    // if it is; register a hit and exit the function
-
-    // if it is not; register a miss and add it to the cache.
-    *hits += 1;
-    *misses += 1;
-    *evictions += 1;
+fn load(cache: &mut HashMap<String, String>, hits: &mut i32, misses: &mut i32, _evictions: &mut i32, tag: &String, set_index: &String) {
+    if !cache.contains_key(&set_index as &str) {
+        *misses += 1;
+    }
+    if cache.contains_key(&set_index as &str) && cache.get(&set_index as &str) == Some(tag) {
+        *hits += 1;
+    }
+    if cache.contains_key(&set_index as &str) && cache.get(&set_index as &str) != Some(tag) {
+        *misses += 1;
+    }
 }
 
-fn store(_cache: &mut HashMap<i32, i32>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
+fn store(_cache: &mut HashMap<String, String>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
 }
 
-fn modify(_cache: &mut HashMap<i32, i32>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
+fn modify(_cache: &mut HashMap<String, String>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
 }
 
 fn main() -> Result<(), getopt::Error>{
@@ -153,7 +154,7 @@ fn main() -> Result<(), getopt::Error>{
     let (s, b, _e) = get_cli_arguments().unwrap();
 
     // initialise the cache, the hits, misses and evictions variables
-    let mut cache: HashMap<i32, i32> = HashMap::new();
+    let mut cache: HashMap<String, String> = HashMap::new();
     let mut hits: i32 = 0;
     let mut misses: i32 = 0;
     let mut evictions: i32 = 0;
