@@ -1,5 +1,6 @@
 // LRU Cache simulator
 use std::fs::File;
+use std::collections::HashMap;
 use std::io::{ self, BufRead, BufReader };
 use std::env;
 use getopt::Opt;
@@ -90,28 +91,38 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
 
         // Translate memory address to binary:
         let address_binary = convert_to_binary_from_hex(&address);
-        println!("Code: {}\nAddress: {:?}\nAddress in binary: {:?}", &code, &address, &address_binary);
 
         // from binary memory address, find the tag
         let addres_size = &address_binary.len();
         let addres_size = *addres_size as i32;
         let tag_length = &addres_size - b - s;
         let tag_length = tag_length as usize;
-        println!("tag_length: {}", &tag_length);
         let tag = &address_binary[0..tag_length];
-        println!("tag: {}", &tag);
 
         // from binary memory address, find the set_index
         let set_length = &addres_size - b;
         let set_length = set_length as usize;
-        println!("set_length: {}", &set_length);
         let set_index = &address_binary[tag_length..set_length];
-        println!("set_index: {}", &set_index);
+
+//         println!("Code: {}", &code);
+//         println!("Address: {:?}", &address);
+//         println!("Address in binary: {:?}", &address_binary);
+//         println!("tag_length: {}", &tag_length);
+//         println!("tag: {}", &tag);
+//         println!("set_length: {}", &set_length);
+//         println!("set_index: {}", &set_index);
+
         return (code.to_string(), tag.to_string(), set_index.to_string())
 
     }
     return (code.to_string(), tag.to_string(), set_index.to_string())
 
+}
+
+fn process_line(_cache: &mut HashMap<i32, i32>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, _code: &String, _tag: &String, _set_index: &String) {
+    *hits += 1;
+    *misses += 1;
+    *evictions += 1;
 }
 
 fn main() -> Result<(), getopt::Error>{
@@ -120,12 +131,23 @@ fn main() -> Result<(), getopt::Error>{
     let reader = read_lines("./traces/yi2.trace".to_string());
     let (s, b, _e) = get_cli_arguments().unwrap();
 
-    // Iterate over the lines of the file, and in this case print them.
+    // initialise the cache, the hits, misses and evictions variables
+    let mut cache: HashMap<i32, i32> = HashMap::new();
+    let mut hits: i32 = 0;
+    let mut misses: i32 = 0;
+    let mut evictions: i32 = 0;
+
+    // Iterate over the lines of the file
     for line in reader {
         let (code, tag, set_index) = preprocess_line(&line.unwrap(), &s, &b);
-
-//         process_line(code, tag, set_index)
+        process_line(&mut cache,
+                     &mut hits,
+                     &mut misses,
+                     &mut evictions,
+                     &code,
+                     &tag,
+                     &set_index);
     }
-
+    println!("hits:{} misses:{} evictions:{}", &hits, &misses, &evictions);
     Ok(())
 }
