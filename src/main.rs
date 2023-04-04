@@ -78,9 +78,9 @@ fn get_cli_arguments() -> Result<(i32, i32, i32), getopt::Error>{
 fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) {
     let general_re = Regex::new(r"^ [LMS] [0-9a-fA-F]+,[0-9]+$").unwrap();
 
-    let code = "";
-    let set_index = "";
-    let tag = "";
+    let code = String::new();
+    let set_index = String::new();
+    let tag = String::new();
 
     if line.starts_with("I") {
     } else if general_re.is_match(&line) {
@@ -113,16 +113,37 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
 //         println!("set_index: {}", &set_index);
 
         return (code.to_string(), tag.to_string(), set_index.to_string())
-
     }
     return (code.to_string(), tag.to_string(), set_index.to_string())
-
 }
 
-fn process_line(_cache: &mut HashMap<i32, i32>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, _code: &String, _tag: &String, _set_index: &String) {
+fn process_line(cache: &mut HashMap<i32, i32>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, code: &String, tag: &String, set_index: &String) {
+    if code == "L" {
+        load(cache, hits, misses, evictions, tag, set_index)
+    }
+    if code == "S" {
+        store(cache, hits, misses, evictions, tag, set_index)
+    }
+    if code == "M" {
+        modify(cache, hits, misses, evictions, tag, set_index)
+    }
+}
+
+fn load(_cache: &mut HashMap<i32, i32>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, _tag: &String, _set_index: &String) {
+    // check if the _set_index is a key in the cache:
+
+    // if it is; register a hit and exit the function
+
+    // if it is not; register a miss and add it to the cache.
     *hits += 1;
     *misses += 1;
     *evictions += 1;
+}
+
+fn store(_cache: &mut HashMap<i32, i32>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
+}
+
+fn modify(_cache: &mut HashMap<i32, i32>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
 }
 
 fn main() -> Result<(), getopt::Error>{
