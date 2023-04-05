@@ -2,13 +2,9 @@
 use getopt::Opt;
 use regex::Regex;
 use std::collections::HashMap;
-use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
-
-fn _type_of<T>(_: &T) -> String {
-    return std::any::type_name::<T>().to_string();
-}
+use std::path::Path;
 
 fn convert_to_binary_from_hex(hex: &str) -> String {
     hex.chars().map(to_binary).collect()
@@ -85,6 +81,8 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
     let tag = String::new();
 
     if line.starts_with("I") {
+    } else if !general_re.is_match(&line) {
+        panic!("Line `{}` in the trace file has the wrong structure!", &line);
     } else if general_re.is_match(&line) {
         // Find the code and the memory address
         let re = Regex::new(r"^ ([LMS]) ([0-9a-fA-F]+),[0-9]+$").unwrap();
@@ -105,6 +103,14 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
         // from binary memory address, find the tag
         let addres_size = &address_binary.len();
         let addres_size = *addres_size as i32;
+        if b + s > addres_size {
+            panic!("The sum of b (={}) and s (={}) exceeds the binary address size (={}).", &b, &s, &addres_size)
+        }
+
+        if b == &addres_size {
+            panic!("The argument b (={}) is equal to the binary address size (={}).", &b, &addres_size)
+        }
+
         let tag_length = &addres_size - b - s;
         let tag_length = tag_length as usize;
         let tag = &address_binary[0..tag_length];
@@ -118,9 +124,10 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
         //         println!("Address: {:?}", &address);
         //         println!("Address in binary: {:?}", &address_binary);
         //         println!("tag_length: {}", &tag_length);
-        //         println!("tag: {}", &tag);
+                println!("tag: {}", &tag);
         //         println!("set_length: {}", &set_length);
-        //         println!("set_index: {}", &set_index);
+                println!("set_index: {}", &set_index);
+        //         println!("---------------------------")
 
         return (code.to_string(), tag.to_string(), set_index.to_string());
     }
@@ -178,6 +185,9 @@ fn check_cache(
 fn main() -> Result<(), getopt::Error> {
     // Stores the iterator of lines of the file in lines variable.
     let (s, b, _e, t) = get_cli_arguments().unwrap();
+    if !Path::new(&t).exists() {
+        panic!("The path to the trace file doesn't exist!");
+    }
     let reader = read_lines(t);
 
     // initialise the cache, the hits, misses and evictions variables
