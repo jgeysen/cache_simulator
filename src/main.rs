@@ -1,13 +1,13 @@
 // LRU Cache simulator
-use std::fs::File;
-use std::collections::HashMap;
-use std::io::{ self, BufRead, BufReader };
-use std::env;
 use getopt::Opt;
 use regex::Regex;
+use std::collections::HashMap;
+use std::env;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
 
 fn _type_of<T>(_: &T) -> String {
-    return std::any::type_name::<T>().to_string()
+    return std::any::type_name::<T>().to_string();
 }
 
 fn convert_to_binary_from_hex(hex: &str) -> String {
@@ -49,13 +49,14 @@ fn read_lines(filename: String) -> io::Lines<BufReader<File>> {
     return io::BufReader::new(file).lines();
 }
 
-fn get_cli_arguments() -> Result<(i32, i32, i32), getopt::Error>{
+fn get_cli_arguments() -> Result<(i32, i32, i32, String), getopt::Error> {
     let args: Vec<String> = std::env::args().collect();
-    let mut opts = getopt::Parser::new(&args, "s:b:e:");
+    let mut opts = getopt::Parser::new(&args, "s:b:e:t:");
 
     let mut s = String::new();
     let mut b = String::new();
     let mut e = String::new();
+    let mut t = String::new();
 
     loop {
         match opts.next().transpose()? {
@@ -64,6 +65,7 @@ fn get_cli_arguments() -> Result<(i32, i32, i32), getopt::Error>{
                 Opt('s', Some(arg)) => s = arg.clone(),
                 Opt('b', Some(arg)) => b = arg.clone(),
                 Opt('e', Some(arg)) => e = arg.clone(),
+                Opt('t', Some(arg)) => t = arg.clone(),
                 _ => unreachable!(),
             },
         }
@@ -72,7 +74,7 @@ fn get_cli_arguments() -> Result<(i32, i32, i32), getopt::Error>{
     let b = b.parse::<i32>().unwrap();
     let e = e.parse::<i32>().unwrap();
 
-    return Ok((s, b, e))
+    return Ok((s, b, e, t));
 }
 
 fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) {
@@ -86,8 +88,16 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
     } else if general_re.is_match(&line) {
         // Find the code and the memory address
         let re = Regex::new(r"^ ([LMS]) ([0-9a-fA-F]+),[0-9]+$").unwrap();
-        let code = re.captures(&line).unwrap().get(1).map_or("", |m| m.as_str());
-        let address = re.captures(&line).unwrap().get(2).map_or("", |m| m.as_str());
+        let code = re
+            .captures(&line)
+            .unwrap()
+            .get(1)
+            .map_or("", |m| m.as_str());
+        let address = re
+            .captures(&line)
+            .unwrap()
+            .get(2)
+            .map_or("", |m| m.as_str());
 
         // Translate memory address to binary:
         let address_binary = convert_to_binary_from_hex(&address);
@@ -104,64 +114,71 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
         let set_length = set_length as usize;
         let set_index = &address_binary[tag_length..set_length];
 
-        println!("Code: {}", &code);
-//         println!("Address: {:?}", &address);
-//         println!("Address in binary: {:?}", &address_binary);
-//         println!("tag_length: {}", &tag_length);
-//         println!("tag: {}", &tag);
-//         println!("set_length: {}", &set_length);
-//         println!("set_index: {}", &set_index);
+        //         println!("Code: {}", &code);
+        //         println!("Address: {:?}", &address);
+        //         println!("Address in binary: {:?}", &address_binary);
+        //         println!("tag_length: {}", &tag_length);
+        //         println!("tag: {}", &tag);
+        //         println!("set_length: {}", &set_length);
+        //         println!("set_index: {}", &set_index);
 
-        return (code.to_string(), tag.to_string(), set_index.to_string())
+        return (code.to_string(), tag.to_string(), set_index.to_string());
     }
-    return (code.to_string(), tag.to_string(), set_index.to_string())
+    return (code.to_string(), tag.to_string(), set_index.to_string());
 }
 
-fn process_line(cache: &mut HashMap<String, String>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, code: &String, tag: &String, set_index: &String) {
+fn process_line(
+    cache: &mut HashMap<String, String>,
+    hits: &mut i32,
+    misses: &mut i32,
+    evictions: &mut i32,
+    code: &String,
+    tag: &String,
+    set_index: &String,
+) {
     if code == "L" {
-        load(cache, hits, misses, evictions, tag, set_index);
+        check_cache(cache, hits, misses, evictions, tag, set_index);
     }
     if code == "S" {
-        load(cache, hits, misses, evictions, tag, set_index);
+        check_cache(cache, hits, misses, evictions, tag, set_index);
     }
     if code == "M" {
-        load(cache, hits, misses, evictions, tag, set_index);
-        load(cache, hits, misses, evictions, tag, set_index);
+        check_cache(cache, hits, misses, evictions, tag, set_index);
+        check_cache(cache, hits, misses, evictions, tag, set_index);
     }
 }
 
-fn load(cache: &mut HashMap<String, String>, hits: &mut i32, misses: &mut i32, evictions: &mut i32, tag: &String, set_index: &String) {
+fn check_cache(
+    cache: &mut HashMap<String, String>,
+    hits: &mut i32,
+    misses: &mut i32,
+    evictions: &mut i32,
+    tag: &String,
+    set_index: &String,
+) {
     if cache.contains_key(&set_index as &str) && cache.get(&set_index as &str) == Some(tag) {
         *hits += 1;
-        println!("hit");
+        //         println!("hit");
     }
     if cache.contains_key(&set_index as &str) && cache.get(&set_index as &str) != Some(tag) {
         *misses += 1;
-        println!("miss");
+        //         println!("miss");
         cache.remove(&set_index as &str);
-        println!("eviction");
+        //         println!("eviction");
         cache.insert(set_index.to_string(), tag.to_string());
         *evictions += 1;
     }
     if !cache.contains_key(&set_index as &str) {
         *misses += 1;
-        println!("miss");
+        //         println!("miss");
         cache.insert(set_index.to_string(), tag.to_string());
     }
 }
 
-// fn store(_cache: &mut HashMap<String, String>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
-//
-// }
-//
-// fn modify(_cache: &mut HashMap<String, String>, _hits: &mut i32, _misses: &mut i32, _evictions: &mut i32, _tag: &String, _set_index: &String) {
-// }
-
-fn main() -> Result<(), getopt::Error>{
-    env::set_var("RUST_BACKTRACE", "1");
+fn main() -> Result<(), getopt::Error> {
     // Stores the iterator of lines of the file in lines variable.
-    let reader = read_lines("./traces/yi.trace".to_string());
-    let (s, b, _e) = get_cli_arguments().unwrap();
+    let (s, b, _e, t) = get_cli_arguments().unwrap();
+    let reader = read_lines(t);
 
     // initialise the cache, the hits, misses and evictions variables
     let mut cache: HashMap<String, String> = HashMap::new();
@@ -172,13 +189,15 @@ fn main() -> Result<(), getopt::Error>{
     // Iterate over the lines of the file
     for line in reader {
         let (code, tag, set_index) = preprocess_line(&line.unwrap(), &s, &b);
-        process_line(&mut cache,
-                     &mut hits,
-                     &mut misses,
-                     &mut evictions,
-                     &code,
-                     &tag,
-                     &set_index);
+        process_line(
+            &mut cache,
+            &mut hits,
+            &mut misses,
+            &mut evictions,
+            &code,
+            &tag,
+            &set_index,
+        );
     }
     println!("hits:{} misses:{} evictions:{}", &hits, &misses, &evictions);
     Ok(())
