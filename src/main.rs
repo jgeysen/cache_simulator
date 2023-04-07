@@ -86,6 +86,7 @@ fn get_cli_arguments() -> Result<(i32, i32, i32, String), getopt::Error> {
     let b = b.parse::<i32>().unwrap();
     let e = e.parse::<i32>().unwrap();
 
+    // CLI arguments b, s an e can't be zero.
     if b ==  0 {
         panic!("The value of cli argument b cannot be 0.");
     }
@@ -114,17 +115,22 @@ fn get_cli_arguments() -> Result<(i32, i32, i32, String), getopt::Error> {
 /// * `b` - An integer which represents the number of data bits for each memory address
 /// in the trace file.
 fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) {
+    // Define the regex which each valid line in the trace file should match:
     let general_re = Regex::new(r"^ [LMS] [0-9a-fA-F]+,[0-9]+$").unwrap();
 
     let code = String::new();
     let set_index = String::new();
     let tag = String::new();
 
+    // if the line starts with 'I', do nothing.
     if line.starts_with("I") {
+    // if the line doesn't match the predefined regex, do nothing.
     } else if !general_re.is_match(&line) {
         panic!("Line `{}` in the trace file has the wrong structure!", &line);
+    // if the line matches the regex, process it.
     } else if general_re.is_match(&line) {
         // Find the code and the memory address
+        // Using Regex, get the first and second regular expressions
         let re = Regex::new(r"^ ([LMS]) ([0-9a-fA-F]+),[0-9]+$").unwrap();
         let code = re
             .captures(&line)
@@ -143,23 +149,28 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
         // from binary memory address, find the tag
         let addres_size = &address_binary.len();
         let addres_size = *addres_size as i32;
+        // Error handling:
+        // the sum of the given b and s cli arguments can't be larger than the binary
+        // address size
         if b + s > addres_size {
             panic!("The sum of b (={}) and s (={}) exceeds the binary address size (={}).", &b, &s, &addres_size)
         }
-
+        // the cli argument b can't be larger than the binary address size
         if b == &addres_size {
             panic!("The argument b (={}) is equal to the binary address size (={}).", &b, &addres_size)
         }
 
+        // extract the tag from the binary address
         let tag_length = &addres_size - b - s;
         let tag_length = tag_length as usize;
         let tag = &address_binary[0..tag_length];
 
-        // from binary memory address, find the set_index
+        // extract the set_index from the binary address
         let set_length = &addres_size - b;
         let set_length = set_length as usize;
         let set_index = &address_binary[tag_length..set_length];
 
+        // retrun code, tag and set_index
         return (code.to_string(), tag.to_string(), set_index.to_string());
     }
     return (code.to_string(), tag.to_string(), set_index.to_string());
@@ -193,12 +204,15 @@ fn process_line(
     set_index: &String,
     e: &i32
 ) {
+    // if the code is 'L', this indicates a load, so we consult the cache once.
     if code == "L" {
         check_cache(cache, hits, misses, evictions, tag, set_index, e);
     }
+    // if the code is 'S', this indicates a store, so we consult the cache once.
     if code == "S" {
         check_cache(cache, hits, misses, evictions, tag, set_index, e);
     }
+    // if the code is 'M', this indicates a modify, so we consult the cache twice.
     if code == "M" {
         check_cache(cache, hits, misses, evictions, tag, set_index, e);
         check_cache(cache, hits, misses, evictions, tag, set_index, e);
@@ -236,22 +250,37 @@ fn check_cache(
     set_index: &String,
     e: &i32
 ) {
+    // check if the given set_index is a key in the cache hashmap:
     if cache.contains_key(&set_index.to_string()) {
+        // get the vector of tags stored in the cache with the set_index key
         let tag_vec = cache.get_mut(&set_index.to_string()).unwrap();
+        // if the given tag is in the vector, we have a hit.
+        // update the hits and the order of the tags in the vector
+        // This means moving the current tag in the vector to the first place, which
+        // is the most recently used position.
         if tag_vec.contains(tag) {
             *hits += 1;
             tag_vec.retain(|x| *x != tag.to_string());
             tag_vec.insert(0, tag.to_string());
+        // if the given tag is not in the vector, we have a miss.
         } else if !tag_vec.contains(tag) {
             *misses += 1;
+            // Update the vector with the given tag.
+            // if the vector is shorter than the allowed lenght, it is simply added
+            // at the front of the vector.
             if tag_vec.len() < *e as usize {
                 tag_vec.insert(0, tag.to_string());
+            // if the vector has reached its allowed length, pop the last tag (=
+            // the least recently used address tag) and add the current tag in the
+            // front.
             } else {
                 *evictions += 1;
                 tag_vec.pop();
                 tag_vec.insert(0, tag.to_string());
             }
         }
+    // if the current set_index is not in the hashmap, initialise a vector with the
+    // current tag and insert the that vector in the cache with the set_index as key.
     } else if !cache.contains_key(&set_index.to_string()) {
         *misses += 1;
         let mut vec = Vec::with_capacity(*e as usize);
@@ -261,11 +290,13 @@ fn check_cache(
 }
 
 fn main() -> Result<(), getopt::Error> {
-    // Stores the iterator of lines of the file in lines variable.
+    // get the CLI arguments s, b, e, t.
     let (s, b, e, t) = get_cli_arguments().unwrap();
+    // if the passed path doesn't exist; raise an error.
     if !Path::new(&t).exists() {
         panic!("The path to the trace file doesn't exist!");
     }
+    // create a buffer reader for the file in the given path.
     let reader = read_lines(t);
 
     // initialise the cache, the hits, misses and evictions variables
@@ -276,7 +307,9 @@ fn main() -> Result<(), getopt::Error> {
 
     // Iterate over the lines of the file
     for line in reader {
+        // extract the code, tag and set_index from the current line.
         let (code, tag, set_index) = preprocess_line(&line.unwrap(), &s, &b);
+        // given code, tag and set_index, update the cache, misses, hits and evictions.
         process_line(
             &mut cache,
             &mut hits,
@@ -288,6 +321,7 @@ fn main() -> Result<(), getopt::Error> {
             &e
         );
     }
+    // print out the result after iterating all lines in the trace file.
     println!("hits:{} misses:{} evictions:{}", &hits, &misses, &evictions);
     Ok(())
 }
