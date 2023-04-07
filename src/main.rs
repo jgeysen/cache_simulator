@@ -87,7 +87,7 @@ fn get_cli_arguments() -> Result<(i32, i32, i32, String), getopt::Error> {
     let e = e.parse::<i32>().unwrap();
 
     // CLI arguments b, s an e can't be zero.
-    if b ==  0 {
+    if b == 0 {
         panic!("The value of cli argument b cannot be 0.");
     }
     if s == 0 {
@@ -124,9 +124,12 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
 
     // if the line starts with 'I', do nothing.
     if line.starts_with("I") {
-    // if the line doesn't match the predefined regex, do nothing.
+        // if the line doesn't match the predefined regex, do nothing.
     } else if !general_re.is_match(&line) {
-        panic!("Line `{}` in the trace file has the wrong structure!", &line);
+        panic!(
+            "Line `{}` in the trace file has the wrong structure!",
+            &line
+        );
     // if the line matches the regex, process it.
     } else if general_re.is_match(&line) {
         // Find the code and the memory address
@@ -149,15 +152,20 @@ fn preprocess_line(line: &String, s: &i32, b: &i32) -> (String, String, String) 
         // from binary memory address, find the tag
         let addres_size = &address_binary.len();
         let addres_size = *addres_size as i32;
-        // Error handling:
         // the sum of the given b and s cli arguments can't be larger than the binary
         // address size
         if b + s > addres_size {
-            panic!("The sum of b (={}) and s (={}) exceeds the binary address size (={}).", &b, &s, &addres_size)
+            panic!(
+                "The sum of b (={}) and s (={}) exceeds the binary address size (={}).",
+                &b, &s, &addres_size
+            )
         }
         // the cli argument b can't be larger than the binary address size
         if b == &addres_size {
-            panic!("The argument b (={}) is equal to the binary address size (={}).", &b, &addres_size)
+            panic!(
+                "The argument b (={}) is equal to the binary address size (={}).",
+                &b, &addres_size
+            )
         }
 
         // extract the tag from the binary address
@@ -202,17 +210,14 @@ fn process_line(
     code: &String,
     tag: &String,
     set_index: &String,
-    e: &i32
+    e: &i32,
 ) {
-    // if the code is 'L', this indicates a load, so we consult the cache once.
     if code == "L" {
         check_cache(cache, hits, misses, evictions, tag, set_index, e);
     }
-    // if the code is 'S', this indicates a store, so we consult the cache once.
     if code == "S" {
         check_cache(cache, hits, misses, evictions, tag, set_index, e);
     }
-    // if the code is 'M', this indicates a modify, so we consult the cache twice.
     if code == "M" {
         check_cache(cache, hits, misses, evictions, tag, set_index, e);
         check_cache(cache, hits, misses, evictions, tag, set_index, e);
@@ -248,7 +253,7 @@ fn check_cache(
     evictions: &mut i32,
     tag: &String,
     set_index: &String,
-    e: &i32
+    e: &i32,
 ) {
     // check if the given set_index is a key in the cache hashmap:
     if cache.contains_key(&set_index.to_string()) {
@@ -318,7 +323,7 @@ fn main() -> Result<(), getopt::Error> {
             &code,
             &tag,
             &set_index,
-            &e
+            &e,
         );
     }
     // print out the result after iterating all lines in the trace file.
